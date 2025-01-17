@@ -36,7 +36,7 @@ def checkIfDefaultUser(suspect: Redditor):
 #REDACTED SECTION
 
 def notFrontPage(item, image):
-    if re.findall(rf'https://www.reddit.com/r/{item.submission.subreddit}/((hot|top|new)|(comments/{item.submission.id}))/', image) == []:
+    if re.findall(rf'https://www.reddit.com/r/{item.submission.subreddit}/((hot|top|new)|(comments/{item.submission.id}))/', image) == [] and image != f'https://www.reddit.com/r/{item.submission.subreddit}/':
         return True
     return False
 
