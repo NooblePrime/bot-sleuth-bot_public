@@ -1,4 +1,5 @@
 from prawcore.exceptions import Forbidden, ServerError, TooManyRequests
+from praw.exceptions import RedditAPIException
 import threading
 from time import sleep
 from pprint import pprint
@@ -22,7 +23,7 @@ def mentionStream():
                     item.mark_read()
                 if item.new and ((info['type'] == 'username_mention') or (info['type'] == 'comment_reply' and 'u/bot-sleuth-bot' in body)):
                     if 'repost' in body:
-                        if 'filter: subreddit' in body or 'filter: subreddit' in body:
+                        if 'filter: subreddit' in body or 'filter:subreddit' in body:
                             attemptComment(item.parent().author, item, True, constraint = 'subreddit')
                         elif 'filter: reddit' in body or 'filter:reddit' in body:
                             attemptComment(item.parent().author, item, True, constraint = 'subreddit')
@@ -37,22 +38,24 @@ def mentionStream():
                             print("Replied to a post!")
                         except Forbidden:
                             print("Cannot comment on banned subreddit.")
+                        except RedditAPIException as e:
+                            if 'THREAD_LOCKED' in str(e):
+                                print("Thread was locked.")
+                                item.mark_read()
                         except Exception as e:
                             print("Unexpected error!")
                             pprint(e)
-                    elif 'unmarkbot' in body:
-                        unmarkbot(item)
-                        print('Replied to a post!')
-                        item.mark_read()
                     elif 'markbot' in body:
-                        markbot(item)
+                        if 'unmarkbot' in body:
+                            unmarkbot(item)
+                        else:
+                            markbot(item)
                         print('Replied to a post!')
                         item.mark_read()
                     else:
                         attemptComment(item.parent().author, item, False)
                         print('Replied to a post!')
                         item.mark_read()
-                    
             retry = False
         except ServerError:
             print("Server error. Retrying...")
@@ -91,21 +94,24 @@ def mentionStream():
                             print("Replied to a post!")
                         except Forbidden:
                             print("Cannot comment on banned subreddit.")
+                        except RedditAPIException as e:
+                            if 'THREAD_LOCKED' in str(e):
+                                print("Thread was locked.")
+                                item.mark_read()
                         except Exception as e:
                             print("Unexpected error!")
                             pprint(e)
-                    elif 'unmarkbot' in body:
-                        unmarkbot(item)
-                        print('Replied to a post!')
-                        item.mark_read()
                     elif 'markbot' in body:
-                        markbot(item)
+                        if 'unmarkbot' in body:
+                            unmarkbot(item)
+                        else:
+                            markbot(item)
                         print('Replied to a post!')
                         item.mark_read()
                     else:
                         attemptComment(item.parent().author, item, False)
+                        print('Replied to a post!')
                         item.mark_read()
-                    
             retry = False
         except ServerError:
             print("Server error. Retrying...")
