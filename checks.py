@@ -3,10 +3,6 @@ from pprint import pprint
 from imageHandling import imageSearch, sortMedia
 from vars import new_line
 from praw.models import Redditor
-from prawcore.exceptions import TooManyRequests
-from praw.models.listing.mixins.redditor import SubListing
-from difflib import SequenceMatcher
-from vars import reddit
 import re
 week = 604800 #How long a week is in seconds.
 month = 2592000 #Same but with month
