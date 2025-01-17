@@ -42,7 +42,9 @@ def mentionStream():
                         except RedditAPIException as e:
                             if 'THREAD_LOCKED' in str(e):
                                 print("Thread was locked.")
-                                item.mark_read()
+                            elif 'DELETED_COMMENT' in str(e):
+                                print("Comment was deleted.")
+                            item.mark_read()
                         except Exception as e:
                             print("Unexpected error!")
                             pprint(e)
@@ -98,7 +100,9 @@ def mentionStream():
                         except RedditAPIException as e:
                             if 'THREAD_LOCKED' in str(e):
                                 print("Thread was locked.")
-                                item.mark_read()
+                            elif 'DELETED_COMMENT' in str(e):
+                                print("Comment was deleted.")
+                            item.mark_read()
                         except Exception as e:
                             print("Unexpected error!")
                             pprint(e)
