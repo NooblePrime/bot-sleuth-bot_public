@@ -15,7 +15,8 @@ def imageSearch(image_url: str):
     response2 = session.get(upload_response.url + exact, timeout=5)
     soup2 = BeautifulSoup(response2.text, features="html.parser")
     for links in soup2.find_all('a'):
-        if '/search?' not in str(links.get('href')) and 'google.com/' not in str(links.get('href')) and str(links.get('href')) != "None":
+        link = str(links.get('href'))
+        if link != "None" and '/search?' not in link and 'google.com/' not in link:
             output.append(str(links.get('href')))
     return output
 
