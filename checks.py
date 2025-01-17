@@ -7,6 +7,7 @@ from prawcore.exceptions import TooManyRequests
 from praw.models.listing.mixins.redditor import SubListing
 from difflib import SequenceMatcher
 from vars import reddit
+import re
 week = 604800 #How long a week is in seconds.
 month = 2592000 #Same but with month
 
@@ -25,21 +26,10 @@ def logVisit(id: str):
 
 def checkIfDefaultUser(suspect: Redditor):
     user = suspect.name
-    upper_count = 0
-    digit_count = 0
-    dash_count = 0
-    underscore_count = 0
-    for char in user:
-        if char.isalpha():
-            digit_count = 0
-            if char.isupper():
-                upper_count += 1
-        elif char.isdigit():
-            digit_count += 1
-        elif char == "-":
-            dash_count += 1
-        elif char == '_':
-            underscore_count += 1
+    upper_count = len(re.findall(r'[A-Z]', user))
+    digit_count = len(re.findall(r'\d', user))
+    dash_count = len(re.findall(r'-', user))
+    underscore_count = len(re.findall(r'_', user))
     
     line_check = ((underscore_count > 0) ^ (dash_count > 0)) and (underscore_count < 3 and dash_count < 3)
         
@@ -49,8 +39,12 @@ def checkIfDefaultUser(suspect: Redditor):
 
 #REDACTED SECTION
 
+def notFrontPage(item, image):
+    if re.findall(rf'https://www.reddit.com/r/{item.submission.subreddit}/((hot|top|new)|(comments/{item.submission.id}))/', image) == []:
+        return True
+    return False
+
 def repostCheck(item, constraint = None):
-    #Yes, I know this one is messy. I haven't gotten around to cleaning it up.
     submission = item.submission
     comment_string = ""
     if hasattr(submission, 'post_hint'):
@@ -71,7 +65,7 @@ def repostCheck(item, constraint = None):
                         matches = []
                         comment_string += f'Checking image {index} for matches...' + new_line
                         for image in search:
-                            if item.submission.permalink not in image and image != f'https://www.reddit.com/r/{item.submission.subreddit}/' and f'https://www.reddit.com/r/{item.submission.subreddit}/comments/{item.submission.id}/' not in image:
+                            if item.submission.permalink not in image and image != f'https://www.reddit.com/r/{item.submission.subreddit}/' and notFrontPage(item, image):
                                 duplicate = False
                                 for match in matches:
                                     if match in image:
@@ -107,7 +101,7 @@ def repostCheck(item, constraint = None):
             if constraint == 'subreddit':
                 comment_string += 'Filtering out matches that are not in this subreddit...' + new_line
                 for image in search:
-                    if f'https://www.reddit.com/r/{item.submission.subreddit}/' in image and image != f'https://www.reddit.com/r/{item.submission.subreddit}/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/hot/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/top/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/new/' and f'https://www.reddit.com/r/{item.submission.subreddit}/comments/{item.submission.id}/' not in image:
+                    if f'https://www.reddit.com/r/{item.submission.subreddit}/' in image and notFrontPage(item, image):
                         duplicate = False
                         for match in matches:
                             if match in image:
@@ -117,7 +111,7 @@ def repostCheck(item, constraint = None):
             elif constraint == 'reddit':
                 comment_string += 'Filtering out matches that are not from Reddit...' + new_line
                 for image in search:
-                    if 'https://www.reddit.com/' in image and image != f'https://www.reddit.com/r/{item.submission.subreddit}/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/hot/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/top/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/new/' and f'https://www.reddit.com/r/{item.submission.subreddit}/comments/{item.submission.id}/' not in image:
+                    if 'https://www.reddit.com/' in image and notFrontPage(item, image):
                         duplicate = False
                         for match in matches:
                             if match in image:
@@ -126,7 +120,7 @@ def repostCheck(item, constraint = None):
                             matches.append(image)
             else:
                 for image in search:
-                    if item.submission.permalink not in image and image != f'https://www.reddit.com/r/{item.submission.subreddit}/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/hot/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/top/' and image != f'https://www.reddit.com/r/{item.submission.subreddit}/new/' and f'https://www.reddit.com/r/{item.submission.subreddit}/comments/{item.submission.id}/' not in image:
+                    if item.submission.permalink not in image and notFrontPage(item, image):
                         matches.append(image)
             match_count = len(matches)
             if match_count > 0:
@@ -138,15 +132,8 @@ def repostCheck(item, constraint = None):
                 else:
                     comment_string += f'{match_count} matches found. Displaying first five below.' + new_line
                 index = 0
-                for url in matches:
-                    comment_string += f'[Match]({url})'
-                    if index >= match_count or index > 3:
-                        break
-                    else:
-                        comment_string += ', '
-                    index += 1
-                comment_string = comment_string.removesuffix(", ")
-                #Too lazy to figure out how to stop making commas appear at the end, so I did this.
+                match_urls = [f'[Match]({url})' for url in matches[:5]]
+                comment_string += ', '.join(match_urls)
                 if match_count >= 200:
                     comment_string += new_line + "Please note that popular meme templates will yield extremely high amounts of matches, even if the text is different. The matches I have provided are the closest that reverse image searching could provide. If the text is different, this is probably OC and not a repost."
             else:
