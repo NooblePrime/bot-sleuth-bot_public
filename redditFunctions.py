@@ -2,7 +2,10 @@ import checks
 from praw.exceptions import RedditAPIException
 from prawcore.exceptions import Forbidden
 from pprint import pprint
-from vars import new_line, bot_statement, trusted_users
+from vars import new_line, bot_statement, trusted_users, banStatement
+from json import load
+from time import time
+from cacheHandler import logCheck
 
 def roundTimeDiff(seconds: int):
     if seconds < 60:
