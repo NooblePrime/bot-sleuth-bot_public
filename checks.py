@@ -3,22 +3,19 @@ from pprint import pprint
 from imageHandling import imageSearch, sortMedia
 from vars import new_line
 from praw.models import Redditor
+from prawcore.exceptions import TooManyRequests
+from praw.models.listing.mixins.redditor import SubListing
+from vars import reddit
 import re
 week = 604800 #How long a week is in seconds.
 month = 2592000 #Same but with month
 
 #REDACTED SECTION
 
-def checkIfVisited(id: str):
-    file = open('visited_posts.txt', 'r')
-    data = file.read()
-    file.close()
-    return id in data
-
-def logVisit(id: str):
-    file = open('visited_posts.txt', 'a')
-    file.write(id + "\n")
-    file.close
+def checkCommentKarma(suspect: Redditor):
+    if suspect.comment_karma < 0:
+        return True
+    return False
 
 def checkIfDefaultUser(suspect: Redditor):
     user = suspect.name
