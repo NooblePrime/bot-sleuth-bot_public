@@ -4,23 +4,46 @@ from prawcore.exceptions import Forbidden
 from pprint import pprint
 from vars import new_line, bot_statement, trusted_users
 
+def roundTimeDiff(seconds: int):
+    if seconds < 60:
+        return f'{int(seconds)} second{"s" if seconds > 1 else ""}'
+    elif seconds < 3600:
+        return f'{int(seconds // 60)} minute{"s" if seconds // 60 > 1 else ""}'
+    elif seconds < 86400:
+        return f'{int(seconds // 3600)} hour{"s" if seconds // 3600 > 1 else ""}'
+    elif seconds < 604800:
+        return f'{int(seconds // 86400)} day{"s" if seconds // 86400 > 1 else ""}'
+    elif seconds < 2419200:
+        return f'{int(seconds // 604800)} week{"s" if seconds // 604800 > 1 else ""}'
+    elif seconds < 29030400:
+        return f'{int(seconds // 2419200)} month{"s" if seconds // 2419200 > 1 else ""}'
+    else:
+        return f'{int(seconds // 29030400)} year{"s" if seconds // 29030400 > 1 else ""}'
+
 def constructComment(suspect):
     try:
         name = suspect.name
     except AttributeError:
         return "Account or post was deleted, so user info could not be fetched. Unable to analyze"
     except Exception as e:
-        if str(e) == 'received 404 HTTP response':
+        if (str(e) == 'received 404 HTTP response'):
             return "Unable to access user information. It is likely the account has been suspended or deleted."
         return "Fatal error! Displaying details..." + new_line + str(e)
-    if name == "pixel-counter-bot":
-        return "That is a bot made by the same person who made me."
-    if name == "syko-san":
-        return "That is the person who made me! He's a bit of an NPC sometimes, but not a bot."
-    if name == "bot-sleuth-bot":
-        return "Why are you trying to check if I'm a bot? I've made it pretty clear that I am."
+    
+    with open("special_cases.json", 'r') as file:
+        special_cases = load(file)
+    if name in special_cases:
+        return special_cases[name]["response"]
+    
+    with open("cache.json", 'r') as file:
+        cache = load(file)
+    if name in cache["checked_users"]:
+        cooldown = time() - cache["checked_users"][name]["time"]
+        if cooldown < 86400:
+            return cache["checked_users"][name]["message"]
+
     if name.lower() in trusted_users:
-        return "This account has been verified as a trustworthy user by the developer of this bot, or someone trusted by him. Further checking is unnecessary."
+        return f"u/{name} has been verified as a trustworthy user by the developer of this bot, or someone trusted by him. Further checking is unnecessary."
     if name.lower() in open('marked_bots.txt').read():
         return f'Trustworthy sources have manually verified that u/{name} is a bot. Further checking is unnecessary. If this is a mistake, please contact the user who flagged you or [u/syko-san](https://www.reddit.com/user/syko-san/) to have it corrected.'
     
@@ -75,14 +98,25 @@ def attemptComment(suspect, item, repost, constraint = None):
 
     try:
         reply = item.reply(comment_string + bot_statement)
-        attemptSticky(reply)
+        if "Suspicion Quotient: " in comment_string and not repost:
+            with open("cache.json", 'r') as file:
+                cache = load(file)
+                if suspect.name in cache["checked_users"]:
+                    last_logged_time = cache["checked_users"][suspect.name]["time"]
+                    if time() - last_logged_time > 86400:
+                        try:
+                            logCheck(suspect.name, comment_string)
+                        except ValueError:
+                            pass
+        if constraint == 'sticky':
+            attemptSticky(reply)
         print("Replied to a post!")
     except Forbidden:
         print("Cannot comment on banned subreddit, private messaging user.")
         try:
-            item.author.message(subject="I was banned.", message=f'Hello. It appears that I have been banned from r/{item.submission.subreddit.display_name} and am unable to reply to [this comment]({item.context}), so I have privately messaged you to display the results instead. The constructed reply is as follows:\n\n' + comment_string + bot_statement)
+            item.author.message(subject="I was banned.", message=banStatement(item.submission.subreddit.display_name, item.context, comment_string))
         except RedditAPIException or Forbidden:
             pass
-    except Exception as e:
-        print("Unexpected error!")
-        pprint(e)
+        except Exception as e:
+            print("Unexpected error!")
+            pprint(e)
