@@ -5,10 +5,12 @@ def logCheck(name: str, message: str):
     try:
         with open("cache.json", 'r+') as file:
             cache = json.load(file)
-            cache["checked_users"][name] = {"time": time(), "message": message}
-            file.seek(0)
-            json.dump(cache, file, indent=4)
-            file.truncate()
+            last_checked = cache["checked_users"].get(name, {}).get("time", 0)
+            if time() - last_checked > 86400:  # 24 hours
+                cache["checked_users"][name] = {"time": time(), "message": message}
+                file.seek(0)
+                json.dump(cache, file, indent=4)
+                file.truncate()
     except (FileNotFoundError, json.JSONDecodeError):
         cache = {"checked_users": {name: {"time": time(), "message": message}}, "cooldowns": {}}
         with open("cache.json", 'w') as file:

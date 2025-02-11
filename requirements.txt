@@ -1,0 +1,7 @@
+bs4
+requests
+difflib
+pillow
+praw
+pprint
+prawcore
